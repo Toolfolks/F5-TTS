@@ -1,3 +1,12 @@
+conda create --name F5 python=3.10
+conda activate F5
+
+conda install -c conda-forge ffmpeg
+
+conda install pytorch torchvision torchaudio cudatoolkit=11.8 -c pytorch
+C:\Users\sales\.conda\envs\F5\python.exe gradio_app.py
+
+
 # F5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching
 
 [![python](https://img.shields.io/badge/Python-3.10-brightgreen)](https://github.com/SWivid/F5-TTS)

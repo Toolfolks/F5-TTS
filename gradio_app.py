@@ -44,8 +44,9 @@ pipe = pipeline(
     model="openai/whisper-large-v3-turbo",
     torch_dtype=torch.float16,
     device=device,
+    batch_size=32, 
 )
-vocos = Vocos.from_pretrained("charactr/vocos-mel-24khz")
+vocos = Vocos.from_pretrained("charactr/vocos-mel-24khz").to(device)
 
 # --------------------- Settings -------------------- #
 
@@ -112,7 +113,9 @@ def chunk_text(text, max_chars=135):
     chunks = []
     current_chunk = ""
     # Split the text into sentences based on punctuation followed by whitespace
-    sentences = re.split(r'(?<=[;:,.!?])\s+|(?<=[；：，。！？])', text)
+    #sentences = re.split(r'(?<=[;:,.!?])\s+|(?<=[；：，。！？])', text)
+    sentences = re.split(r'(?<=[;:,.!?])\s+|(?<=[\uFF1B\uFF1A\uFF0C\u3002\uFF01\uFF1F])', text)
+
 
     for sentence in sentences:
         if len(current_chunk.encode('utf-8')) + len(sentence.encode('utf-8')) <= max_chars:
@@ -175,8 +178,9 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence,
             )
 
         generated = generated[:, ref_audio_len:, :]
-        generated_mel_spec = rearrange(generated, "1 n d -> 1 d n")
-        generated_wave = vocos.decode(generated_mel_spec.cpu())
+        generated_mel_spec = rearrange(generated, "1 n d -> 1 d n").to(device)
+
+        generated_wave = vocos.decode(generated_mel_spec)
         if rms < target_rms:
             generated_wave = generated_wave * rms / target_rms
 
@@ -230,7 +234,9 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence,
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             sf.write(f.name, final_wave, target_sample_rate)
             aseg = AudioSegment.from_file(f.name)
-            non_silent_segs = silence.split_on_silence(aseg, min_silence_len=1000, silence_thresh=-50, keep_silence=500)
+            non_silent_segs = silence.split_on_silence(aseg, min_silence_len=500, silence_thresh=-40, keep_silence=250)
+
+
             non_silent_wave = AudioSegment.silent(duration=0)
             for non_silent_seg in non_silent_segs:
                 non_silent_wave += non_silent_seg
